@@ -1,0 +1,7 @@
+#!/bin/sh
+java -Xmx1120M -XX:+HeapDumpOnOutOfMemoryError -Dcom.sun.management.jmxremote.port=3333 \
+     -Dcom.sun.management.jmxremote.ssl=false \
+     -Dcom.sun.management.jmxremote.authenticate=false \
+-agentpath:/home/nltran/jprofiler7/bin/linux-x64/libjprofilerti.so=port=8849 \
+-jar sbt-launch.jar "$@"
+
