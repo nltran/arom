@@ -4,8 +4,8 @@ package org.arom.util
 
 import java.io.InputStream
 
-import org.arom.Plan
-import org.arom.Node
+import org.arom.core.Plan
+import org.arom.core.Node
 
 object Graphviz {
 	def toDot(plan: Plan,			 

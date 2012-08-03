@@ -1,7 +1,7 @@
 // (c) 2010-2011 Arthur Lesuisse
 
 package org.arom.util
-import org.arom.Node
+import org.arom.core.Node
 
 import scala.collection.mutable.{ ListBuffer, Stack, HashMap, Queue, HashSet }
 
