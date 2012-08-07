@@ -12,7 +12,7 @@ There are 2 principal runtimes in AROM:
 - The master node, which schedules and orchestrates the operators to be executed in parallel on the cluster
 - The slave nodes which run the operator code.
 
-It is built around the actor model and uses AKKA 1.0 as the basis of its stack. AROM is implemented in Scala.
+It is built around the actor model and uses AKKA 1.0 at the basis of its stack. AROM is implemented in Scala.
 
 # Compilation Instructions
 The current code on the repository is fully fonctional and comprises the master and the slave runtimes. Once 
@@ -25,11 +25,11 @@ $ ./sbt compile
 
 # Configuration
 
-There are two configuration files that must be adjusted:
- * aromslave/src/main/resources/akka.conf 
+The folowing configuration file must be adjusted:
+ * aromslave/conf/akka.conf 
    (contains all AROM settings along those for the Akka library)
 
-# Starting the runtime
+# Starting the slave runtime
 
 The slave runtime can be launched with the command:
 
@@ -37,4 +37,8 @@ $ ./sbt 'project naiadslave' run
 
 At the moment, the slave runtime needs to be manually launched on each of the slave nodes in the cluster.
 
-The master runtime is automatically launched once a job is defined and started (more job examples to come)
+The master runtime is automatically launched once a job is defined and started (please see wiki for examples and documentation)
+
+# Contibutors
+Tran Nam-Luc (Euranova)
+Arthur Lesuisse (ULB - initial commit)
