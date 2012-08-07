@@ -7,7 +7,7 @@ AROM is a distributed parallel processing framework based on the DFG model for t
 
 # Getting Started
 
-* Please check out our wiki, it is intended as our single point of information for the moment
+* Please check out our [wiki](https://github.com/nltran/arom/wiki), it is intended as our single point of information for the moment
 * Widely annotated examples are available in the examples package
 
 # Compilation Instructions
