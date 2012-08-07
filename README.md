@@ -1,18 +1,14 @@
-arom
+Welcome to AROM!
 ====
 
 # Introduction
 
-AROM is a distributed parallel processing framework based on the DFG model for the execution and the definition of the jobs. 
+AROM is a distributed parallel processing framework based on the DFG model for the execution and the definition of the jobs. It is built around the actor model and uses AKKA 1.0 at the basis of its stack and is implemented in Scala.
 
-# Architecture
+# Getting Started
 
-There are 2 principal runtimes in AROM:
-
-- The master node, which schedules and orchestrates the operators to be executed in parallel on the cluster
-- The slave nodes which run the operator code.
-
-It is built around the actor model and uses AKKA 1.0 at the basis of its stack. AROM is implemented in Scala.
+* Please check out our wiki, it is intended as our single point of information for the moment
+* Widely annotated examples are available in the examples package
 
 # Compilation Instructions
 The current code on the repository is fully fonctional and comprises the master and the slave runtimes. Once 
