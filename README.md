@@ -41,4 +41,5 @@ The master runtime is automatically launched once a job is defined and started (
 
 # Contibutors
 Tran Nam-Luc (Euranova)
+
 Arthur Lesuisse (ULB - initial commit)
