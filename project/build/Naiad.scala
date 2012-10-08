@@ -22,6 +22,8 @@ class Arom(info: ProjectInfo) extends DefaultProject(info) {
     override def shouldCheckOutputDirectories = false
 
 	lazy val slave = project("arom-core", "aromslave", new AromSlave(_))
+	lazy val helloworld = project("arom-examples", "hellojob", new HelloJob(_))
+	lazy val wordcount = project("arom-examples", "wordcountjob", new WordCountJob(_))
 	
 	override def mainClass = Some("org.pig.arom.PigNaiadCompiler")
 
@@ -31,6 +33,16 @@ class Arom(info: ProjectInfo) extends DefaultProject(info) {
 		val b = "org.eclipse.jetty" % "jetty-server" % "7.3.0.v20110203"
 		val c = "net.sf.jung" % "jung-visualization" % "2.0.1"
 		val d = "net.sf.jung" % "jung-graph-impl" % "2.0.1"
+	}
+	
+	class HelloJob(info: ProjectInfo) extends AromProject(info) {
+		override def mainClass = Some("org.arom.examples.HelloWorldJob")
+		val aromRuntime = slave
+	}
+	
+	class WordCountJob(info: ProjectInfo) extends AromProject(info) {
+		override def mainClass = Some("org.arom.examples.WordCountJob")
+		val aromRuntime = slave
 	}
 
 
