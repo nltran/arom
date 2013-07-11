@@ -20,3 +20,6 @@ libraryDependencies += "net.sf.jung" % "jung-graph-impl" % "2.0.1"
 
 scalacOptions += "-Yinfer-argument-types"
 
+version := "0.1"
+
+scalaVersion := "2.9.0"

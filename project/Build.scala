@@ -20,4 +20,7 @@ object AROMBuild extends Build {
 
     lazy val wordcount = project("wordcountjob", "arom-examples",
                                  Seq(mainClass in (Compile, run) := Some("org.arom.examples.WordCountJob"))) dependsOn(core)
+
+    lazy val httpwordcount = project("httpwordcountjob", "arom-examples",
+                                     Seq(mainClass in (Compile, run) := Some("org.arom.examples.HTTPWordCountJob"))) dependsOn(core)
 }
