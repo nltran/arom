@@ -1,7 +1,7 @@
- // (c) AROM processing 
+ // (c) AROM processing
 
 /*
- * In this example we will read a text file stored on HDFS and count 
+ * In this example we will read a text file stored on HDFS and count
  * the amount of amount of words contained in it.
  */
 
@@ -36,46 +36,44 @@ import scala.collection.mutable.HashMap
 
 class Partition extends ScalarOperator {
   override def copy = new Partition
-  
+
   override def process(rt) = {
     case (_,t:String) => rt.emit(math.abs(t.hashCode % rt.nOutputs),t)
   }
-  
+
 }
 
 class WordCounter extends ScalarOperator {
   override def copy = new WordCounter
-  
+
   val mainTable = new HashMap[String, Int]
   override def process(rt) = {
     case (_, word:String) => {
       mainTable get word match {
         case None => mainTable update (word, 1)
         case Some(count:Int) => mainTable update(word, count+1)
-      } 
+      }
     }
   }
   override def finish(rt) {
     mainTable foreach {
       case (word: String, count: Int) => rt.emit("word \t " +count.toString())
     }
-    
+
   }
-  
+
 }
 
 object WordCountJob {
-  
-   
   val distribution = 5
-  
+
   def createHDFSReaderPlan:Plan = {
     /*
-     * In this function we are going to create the first stage of the job which is composed of reader 
-     * operators. Each of these operator will be reading a different spit of the file stored in hdfs, 
+     * In this function we are going to create the first stage of the job which is composed of reader
+     * operators. Each of these operator will be reading a different spit of the file stored in hdfs,
      * using the HDFSFileReader operator defined in HDFSFileReader.scala
      */
-    val inputPath = "hdfs://loaclhost:9000:YOURFILEPATH"
+    val inputPath = "hdfs://localhost:9000/YOURFILEPATH"
     println(inputPath)
     val inputFormat = new TextInputFormat
     val outputFormat = new TextOutputFormat
@@ -92,7 +90,7 @@ object WordCountJob {
     val HDFSInputPlan = HDFSSplits reduceLeft { _ || _ }
     HDFSInputPlan
   }
-  
+
   def main(args: Array[String]) {
     /*
      * Create the HDFS reading plan
@@ -101,11 +99,9 @@ object WordCountJob {
     /*
      * Create the plan for the job. In this example we simply print all the results using the PrintLn operator
      */
-    val wordCountJobPlan = (inputPlan >= ((new Partition >> new WordCounter)^(distribution)) >> new PrintLN) 
-    
+    val wordCountJobPlan = (inputPlan >= ((new Partition >> new WordCounter)^(distribution)) >> new PrintLN)
+
     val job = new DistributedJob(wordCountJobPlan)
     job.start
-    
-    
   }
 }

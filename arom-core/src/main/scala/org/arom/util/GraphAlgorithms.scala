@@ -204,9 +204,3 @@ class GraphAlgorithm[GraphType, NodeType](g: GraphType)(implicit val ops: GraphO
   }
 }
 
-
-
-
-
-
-

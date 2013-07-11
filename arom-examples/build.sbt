@@ -1,0 +1,1 @@
+scalacOptions += "-Yinfer-argument-types"

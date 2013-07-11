@@ -4,7 +4,7 @@ package org.arom.core.distributed
 
 import java.net.{ URL, URLClassLoader, InetAddress }
 
-import akka.actor.{ Actor, ActorRef }
+import akka.actor.{ Actor, ActorRef, ActorSystem, Props }
 import org.arom.util.Logging
 
 import org.arom.core._
@@ -16,22 +16,22 @@ import java.util.Calendar
 object RemoteMaster extends Logging {
   protected val jobs = new ListBuffer[DistributedJob]
 
-  private lazy val service = Actor.remote start (Config.master, Config.port)
+  private lazy val system = ActorSystem.create("default", Config.config)
 
   var statusViewer: Thread = null
 
   case object Start
 
   class DistributedJob(plan: Plan) extends AromJob {
-    service;
     jobs append this
 
     private case class Runner(val host: String) {
       var usage: Int = 0
+      val path = "akka://default@%s:%d/user/remote-runtime".format(host, Config.slavePort)
       val actor: Option[ActorRef] = if (host equals InetAddress.getLocalHost.getHostName)
         None
       else
-        Some(Actor.remote actorFor ("remote-runtime", host, Config.port))
+        Some(system actorFor path)
     }
 
     private val runtimes = HashMap(Config.slaves map { host => (host, Runner(host)) }: _*)
@@ -40,13 +40,11 @@ object RemoteMaster extends Logging {
     //private val runqueue = Queue(planAlgos topological { case node: Node => node }: _*)
 
     private val ready = HashSet[Node](plan.vertices filter { plan pred _ isEmpty }: _*)
-    
+
     private val leaves = HashSet[Node](plan.vertices filter{plan succ _ isEmpty}: _*)
-    log.slf4j info (Calendar.getInstance().getTime() + " Began initdescendents")
 //    planAlgos.initDescendents3(leaves)
 //    leaves foreach {n => planAlgos initDescendents4 n}
     val degrees = planAlgos allCumOutDegrees;
-    log.slf4j info (Calendar.getInstance().getTime() + " Finished initdescendents")
 
 //    degrees foreach (println _)
     private var totalUsage = 0
@@ -60,7 +58,7 @@ object RemoteMaster extends Logging {
     private case class Failed(r: Runner, a: ActorRef) extends Hosted(r, a)
     private case class SchedulingInProgress(r: Runner) extends TaskState
 
-    private val ids = Map[Node, String]((plan.vertices zipWithIndex) map { case (node, index) => (node, node.toString + index) }: _*) // contains (node, op. id) 
+    private val ids = Map[Node, String]((plan.vertices zipWithIndex) map { case (node, index) => (node, node.toString + index) }: _*) // contains (node, op. id)
     private val nodes: Map[String, Node] = ids map { case (node, id) => (id, node) } // contains (op. id, node)
 
     private val states: HashMap[Node, TaskState] = HashMap(plan.vertices zip (1 to plan.vertices.length map { _ => Pending }): _*)
@@ -74,24 +72,23 @@ object RemoteMaster extends Logging {
 
     private val hints = HashSet[(Node, Node)]()
     def addHints(h: Set[(Node, Node)]) = hints ++= h
-    
+
     private def chooseNext: (Node, Runner) = {
-      log.slf4j info (Calendar.getInstance().getTime() + " Began choosenext")
       val nodePolicies: Seq[NodePolicy] = Seq(
         // nodes with higher cumulated output degree are prioritized
         { node => 1.0 + (degrees.get(node).get.toDouble /plan.edges.size.toDouble) }, // ((planAlgos cumulatedOutDegree node).toDouble / plan.edges.size.toDouble) },
-          
+
 //          { node => 1.0 + (node.outputs.size.toDouble/plan.edges.size.toDouble) }, // ((planAlgos cumulatedOutDegree node).toDouble / plan.edges.size.toDouble) },
-          
+
 //          { node =>  log.slf4j info (Calendar.getInstance().getTime() + " Entering 1"); 1.0 + ((planAlgos cumulatedOutDegree2 node) / plan.edges.size.toDouble) },
-          
+
         // synchronous operators shouldn't be started until all immediate predecessors are running
         {
           case node: SynchronousOperator if plan pred node exists { states(_) == Pending } => 0.0
           case _ => 1.0
         },
         // nodes with more running predecessors have priority
-        { node => 
+        { node =>
           val preds = planAlgos ancestors node
           if (preds isEmpty)
             1.0
@@ -125,7 +122,7 @@ object RemoteMaster extends Logging {
         { (node, runner) => if (plan pred node exists { on(_, runner.host) }) 5.0 else 1.0 },
         // less busy hosts are encouraged
         { (_, runner) =>
-          if (runner.usage >= Config.hostCapacity) -100.0 //0.25 
+          if (runner.usage >= Config.hostCapacity) -100.0 //0.25
           else (1.5 - runner.usage.toDouble / Config.hostCapacity.toDouble)
         },
         // scheduling hints are taken into account
@@ -138,23 +135,15 @@ object RemoteMaster extends Logging {
           }) 1.0 else 0.0
         })
       val nodes = ready.toSeq
-      log.slf4j info (Calendar.getInstance().getTime() +" Constructed nodes")
 
       val nodeScores = nodes zip (nodes map { n => (1.0 /: nodePolicies) { _ * _(n) } })
-      log.slf4j info (Calendar.getInstance().getTime() +" Constructed nodeScore (nodePolicies)")
-      println("brolprio")
-      println((nodeScores.min) _2)
       val hosts = runtimes.values filter { _.usage < Config.hostCapacity } // filter was commented initially
-      log.slf4j info (Calendar.getInstance().getTime() +" Constructed hosts")
       val nodeHostPairs = nodeScores.sorted take 100 flatMap { case (n, s) => hosts map { (n, s, _) } }
-      log.slf4j info (Calendar.getInstance().getTime() +" Constructed nodeHostPairs")
       val hostScores = nodeHostPairs map { case (n, s, h) => ((n, h), (s /: hostPolicies) { _ * _(n, h) }) }
-      log.slf4j info (Calendar.getInstance().getTime() +" Constructed hostScores")
 
-      //            nodeScores.sorted foreach println
-      // hostScores.sorted foreach println
-      //			println((hostScores.min) _2)
-      log.slf4j info (Calendar.getInstance().getTime() +" Finished choosenext")
+      //nodeScores.sorted foreach println
+      //hostScores.sorted foreach println
+      //println((hostScores.min) _2)
 
       (hostScores.sorted head) _1
 
@@ -181,7 +170,7 @@ object RemoteMaster extends Logging {
       if (finalRT.usage <= Config.hostCapacity)
         totalUsage = totalUsage + 1
 
-      log.slf4j info ("Sending %s to %s with usage %s" format (id, finalRT.host, finalRT.usage))
+      log.slf4j info ("Sending %s to %s with usage %s" format (id, finalRT.path, finalRT.usage))
       val newtask = RemoteRuntime.RegisterTask(id, node, nIns, nOuts, outToInMapping)
 
       if (finalRT.actor eq None) {
@@ -189,7 +178,6 @@ object RemoteMaster extends Logging {
       } else {
         finalRT.actor.get ! newtask
       }
-      log.slf4j info ("finished scheduleNext")
     }
 
     def addStaticInit(func: () => Unit) = runtimes.values map { _.actor } foreach {
@@ -234,48 +222,49 @@ object RemoteMaster extends Logging {
       if (Config.httpStatus)
         initStatusServer;
 
-      val masterActor = Actor actorOf new Actor {
-        def receive = {
-          case Start =>
-            while (totalUsage < totalCapacity && !ready.isEmpty)
-              scheduleNext
-          case RemoteRuntime.Finished(id) =>
-            val node = nodes(id)
-            val (rt, act) = states(node) match { case Running(rt, act) => (rt, act) }
-            states.update(node, Finished(rt, act))
-            rt.usage = rt.usage - 1
-            totalUsage = totalUsage - 1
-            log.slf4j info ("Node %s on %s finished" format (id, rt.host))
-            val numfinished = states collect { case (_, Finished(_, _)) => 1 } size
-            val percent = (100 * numfinished) / states.size
-            log.slf4j info ("%d%% completed" format percent)
-            if (!ready.isEmpty) { scheduleNext }
-            else if (numfinished == states.size) {
-              runtimes.values foreach { rt =>
-                log.slf4j info ("Unloading %s" format (rt))
-                if (rt.actor ne None)
-                  rt.actor.get ! RemoteRuntime.Unload
+      val masterActor = system actorOf(Props(new Actor {
+          override def receive = {
+            case Start =>
+              while (totalUsage < totalCapacity && !ready.isEmpty)
+                scheduleNext
+            case RemoteRuntime.Finished(id) =>
+              val node = nodes(id)
+              val (rt, act) = states(node) match { case Running(rt, act) => (rt, act) }
+              states.update(node, Finished(rt, act))
+              rt.usage = rt.usage - 1
+              totalUsage = totalUsage - 1
+              log.slf4j info ("Node %s on %s finished" format (id, rt.host))
+              val numfinished = states collect { case (_, Finished(_, _)) => 1 } size
+              val percent = (100 * numfinished) / states.size
+              log.slf4j info ("%d%% completed" format percent)
+              if (!ready.isEmpty) { scheduleNext }
+              else if (numfinished == states.size) {
+                runtimes.values foreach { rt =>
+                  log.slf4j info ("Unloading %s" format (rt))
+                  if (rt.actor ne None)
+                    rt.actor.get ! RemoteRuntime.Unload
+                }
+                _finished = true
+                ClasspathServer.stop
+                //self.stop
+                //Actor.remote shutdown;
               }
-              _finished = true
-              ClasspathServer.stop
-              //self.stop							
-              //Actor.remote shutdown;							
-            }
-          case RemoteRuntime.Stats(id, statlst) =>
-            stats update (nodes(id), Map(statlst: _*))
+            case RemoteRuntime.Stats(id, statlst) =>
+              stats update (nodes(id), Map(statlst: _*))
 
-          case RemoteRuntime.Failed(id, reason) =>
-            val node = nodes(id)
-            states(node) match { case Hosted(runner, actor) => states update (node, Failed(runner, actor)) }
-            reason foreach errors.+=
+            case RemoteRuntime.Failed(id, reason) =>
+              val node = nodes(id)
+              states(node) match { case Hosted(runner, actor) => states update (node, Failed(runner, actor)) }
+              reason foreach errors.+=
 
-          case id: String =>
-            val rt = states(nodes(id)) match { case SchedulingInProgress(rt) => rt }
-            finishScheduling(id, Actor.remote actorFor (id, rt.host, Config.port))
-        }
-      }
+            case path: String =>
+              val rt = states(nodes(path)) match { case SchedulingInProgress(rt) => rt }
+              finishScheduling(path, system actorFor "akka://default@%s:%d/user/%s".format(rt.host, Config.slavePort, path))
+          }
+        }), name = "remote-master")
+
       startTime = new java.util.Date().getTime
-      Actor.remote register ("remote-master", masterActor)
+      //Actor.remote register ("remote-master", masterActor)
       masterActor ! Start
     }
 
@@ -370,10 +359,10 @@ object RemoteMaster extends Logging {
       this setHandler new AbstractHandler {
         lazy val loader = new URLClassLoader(jars.toArray, getClass() getClassLoader);
         def handle(target: String, baseReq: Request, req: HttpServletRequest, resp: HttpServletResponse) = {
-          //print("ASKED FOR CLASS " + target + "... "); System.out.flush
+          //print ("ASKED FOR CLASS '" + target + "': "); System.out.flush
           loader getResourceAsStream (target substring 1) match {
-            case null => resp setStatus 404 //; println("NOT SERVED")
-            case input => //println("SERVED")
+            case null => resp setStatus 404; //println ("NOT SERVED")
+            case input => //println ("SERVED")
               resp setContentType "application/x-java-class"
               resp setStatus 200
               val output = resp getOutputStream;
