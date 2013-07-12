@@ -28,7 +28,6 @@ object RemoteMaster extends Logging {
     private case class Runner(val host: String) {
       var usage: Int = 0
       val path = "akka://default@%s:%d/user/remote-runtime".format(host, Config.slavePort)
-      log.slf4j debug "comparing %s with %s".format(host, InetAddress.getLocalHost.getHostName)
       val actor: Option[ActorRef] = if (host equals InetAddress.getLocalHost.getHostName)
         None
       else
