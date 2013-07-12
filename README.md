@@ -22,14 +22,14 @@ $ ./sbt compile
 # Configuration
 
 The folowing configuration file must be adjusted:
- * aromslave/conf/akka.conf 
+ * arom-core/src/main/resources/arom.conf
    (contains all AROM settings along those for the Akka library)
 
 # Starting the slave runtime
 
 The slave runtime can be launched with the command:
 
-$ ./sbt 'project naiadslave' run
+$ ./sbt 'project aromslave' run
 
 At the moment, the slave runtime needs to be manually launched on each of the slave nodes in the cluster.
 
