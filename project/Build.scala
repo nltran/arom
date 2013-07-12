@@ -13,7 +13,7 @@ object AROMBuild extends Build {
     lazy val core = project("aromslave", "arom-core",
                             Seq(mainClass in (Compile, run) := Some("org.arom.core.distributed.RemoteRuntime")))
 
-    lazy val examples = project("arom-examples", "arom-examples") aggregate(hellojob, wordcount)
+    lazy val examples = project("arom-examples", "arom-examples") aggregate(hellojob, wordcount) dependsOn(core)
 
     lazy val hellojob = project("hellojob", "arom-examples",
                                 Seq(mainClass in (Compile, run) := Some("org.arom.examples.HelloWorldJob"))) dependsOn(core)
