@@ -4,8 +4,8 @@ package org.arom.core.distributed
 
 import java.net.{ URL, URLClassLoader, InetAddress }
 
-import akka.actor.{ Actor, ActorRef, ActorSystem, Props }
-import org.arom.util.Logging
+import akka.actor.{ Actor, ActorRef, ActorSystem, Props, Deploy, Address }
+import akka.remote.RemoteScope
 
 import org.arom.core._
 import org.arom.util._
@@ -261,7 +261,7 @@ object RemoteMaster extends Logging {
               val rt = states(nodes(path)) match { case SchedulingInProgress(rt) => rt }
               finishScheduling(path, system actorFor "akka://default@%s:%d/user/%s".format(rt.host, Config.slavePort, path))
           }
-        }), name = "remote-master")
+        }), "remote-master")
 
       startTime = new java.util.Date().getTime
       //Actor.remote register ("remote-master", masterActor)
