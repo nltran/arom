@@ -5,7 +5,7 @@ package org.arom.core.distributed
 import scala.collection.mutable.{HashMap, Buffer, ArrayBuffer}
 import scala.collection.JavaConversions._
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props, Deploy, Address, AddressFromURIString}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props, Deploy, Address}
 import akka.remote.{MessageSerializer, RemoteScope}
 
 import java.net.{URLClassLoader, URL, InetAddress}
