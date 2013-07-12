@@ -8,14 +8,14 @@ import org.arom.core.Plan
 import org.arom.core.Node
 
 object Graphviz {
-	def toDot(plan: Plan,			 
+	def toDot(plan: Plan,
 			  nodeprops: Node => String = {_ => ""},
 			  edgeprops: ((Node, Node)) => String = {_ => ""}): String = {
 		val sb = new StringBuilder
 		//sb append "digraph G {\n\tsize=\"20,12\"\n\tratio=\"fill\"\n"
-        sb append "digraph G {\n"
+		sb append "digraph G {\n"
 		plan.vertices foreach {
-			op => sb append ("\t%d %s\n" format(op hashCode, nodeprops(op)))				
+			op => sb append ("\t%d %s\n" format(op hashCode, nodeprops(op)))
 		}
 		plan.edges foreach {
 			case (lop, rop) => sb append ("\t%d -> %d %s\n" format(lop hashCode, rop hashCode, edgeprops(lop, rop)))
@@ -23,14 +23,14 @@ object Graphviz {
 		sb append "}\n"
 		sb.result
 	}
-	
-	def compileDot(graph: String, format: String): InputStream = {		
+
+	def compileDot(graph: String, format: String): InputStream = {
 		val process = Runtime getRuntime() exec ("dot -T" + format)
 		process.getOutputStream write graph.getBytes
-		process.getOutputStream close;		
-		process.getInputStream		
+		process.getOutputStream close;
+		process.getInputStream
 	}
-	
+
 }
 
 

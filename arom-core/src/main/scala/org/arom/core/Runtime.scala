@@ -6,30 +6,30 @@ import scala.collection.mutable.{Queue, HashMap, Buffer, ArrayBuffer}
 import org.arom.util.Logging
 import org.apache.commons.io.input.ClassLoaderObjectInputStream
 
-@serializable trait Operator extends Node { 	
-	def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime): Unit 
+@serializable trait Operator extends Node {
+	def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime): Unit
 
 	def init(rt: Operator.Runtime) = ()
-	def finish(rt: Operator.Runtime) = ()	
-	
+	def finish(rt: Operator.Runtime) = ()
+
 	override def toString() = (getClass() getName() split("\\.") last)
 }
 
-object Operator {	
+object Operator {
 	trait Runtime {
 		val nInputs: Int
-		val nOutputs: Int		
+		val nOutputs: Int
 		def emit[T](outputnum: Int, data: T)(implicit m: Manifest[T]): Unit
 		def emit[T](data: T)(implicit m: Manifest[T]): Unit = 0 to (nOutputs-1) foreach (emit(_, data))
 		def emitEOF: Unit
-		def forceFinish: Unit		
+		def forceFinish: Unit
 	}
 }
 
-object Data extends Logging {	
-	trait DataOps[T] {				
+object Data extends Logging {
+	trait DataOps[T] {
 		def memorySize(t: T): Int
-		implicit val binFormat: sbinary.Format[Buffer[T]] 
+		implicit val binFormat: sbinary.Format[Buffer[T]]
 	}
 	class DefaultOps[T] extends DataOps[T] {
 		import sbinary._
@@ -42,8 +42,8 @@ object Data extends Logging {
 				val result = new ArrayBuffer[T](numitems)
 				val bytes = new java.io.ByteArrayInputStream(read[Array[Byte]](in))
 				val objin = new ClassLoaderObjectInputStream(defaultClassLoader, bytes)
-				1 to numitems foreach {_ => 
-					val obj = objin.readObject.asInstanceOf[T]					
+				1 to numitems foreach {_ =>
+					val obj = objin.readObject.asInstanceOf[T]
 					result += obj
 				}
 				objin close;
@@ -59,14 +59,14 @@ object Data extends Logging {
 			}
 		}
 	}
-    var defaultClassLoader = getClass.getClassLoader
+	var defaultClassLoader = getClass.getClassLoader
 	private val registeredDataOps = HashMap[String, DataOps[_]]();
 	
 	def register[T](ops: DataOps[T])(implicit m: Manifest[T]) = registeredDataOps update(m toString, ops)
 	def opsFor[T](manifest: String): DataOps[T] = registeredDataOps get manifest match {
-		case Some(ops) => 
+		case Some(ops) =>
 			ops.asInstanceOf[DataOps[T]]
-		case None if manifest != "Any" && manifest != "Nothing" => 
+		case None if manifest != "Any" && manifest != "Nothing" =>
 			//log.slf4j warn ("Using default data format for manifest " + manifest)
 			new DefaultOps[T]
 	}
@@ -77,12 +77,12 @@ trait Locatable { self: Operator =>
 }
 
 trait Early { self: Operator =>
-   def isEarly = true	
+	def isEarly = true
 }
 
 trait ScalarOperator extends Operator {
 	protected def process(rt: Operator.Runtime): PartialFunction[(Int, Any), Unit]
-	def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime) = {		
+	def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime) = {
 		data foreach (process(rt)(inputnum, _))
 	}
 }
@@ -90,14 +90,14 @@ trait ScalarOperator extends Operator {
 trait VectorOperator extends Operator {
 	protected def process(rt: Operator.Runtime): PartialFunction[(Int, Seq[Any]), Unit]
 	def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime) = {
-		process(rt)(inputnum, data)		
+		process(rt)(inputnum, data)
 	}
 }
 
 trait SynchronousOperator extends Operator {
 	private var inqueues: Seq[Queue[Any]] = null
 	protected def process(rt: Operator.Runtime): PartialFunction[Array[Any], Unit]
-	protected def consume(inputnum: Int) = {inqueues(inputnum) dequeue; ()} 
+	protected def consume(inputnum: Int) = {inqueues(inputnum) dequeue; ()}
 	def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime) = synchronized {
 		if(inqueues eq null) inqueues = 1 to rt.nInputs map {_ => new Queue[Any]}
 		inqueues(inputnum) enqueue(data: _*)
@@ -107,9 +107,9 @@ trait SynchronousOperator extends Operator {
 }
 
 trait InputOperator extends Operator {
-    def hasData: Boolean
-    def sendData(rt: Operator.Runtime): Unit
-    def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime) = {}
+	def hasData: Boolean
+	def sendData(rt: Operator.Runtime): Unit
+	def processWithRuntime(inputnum: Int, data: Seq[Any], rt: Operator.Runtime) = {}
 }
 
 case object EOF
@@ -122,50 +122,50 @@ trait AromJob {
 	def waitDone: Unit
 }
 
-abstract class OperatorRunner(val op: Operator) extends akka.actor.Actor with Operator.Runtime {
-	
+abstract class OperatorRunner(val op: Operator) extends akka.actor.Actor with Operator.Runtime with Logging {
+
 	protected val flushAfterProcess = true
-	
+
 	private var eofReceived: Int = 0
 	private var finished = false
 	def receive = {
-        case BOF if op.isInstanceOf[InputOperator] =>
-            val input = op.asInstanceOf[InputOperator]
-            if(input hasData) {
-                input sendData this
-                self ! BOF
-            } else processEof
-        case BOF => processEof
+		case BOF if op.isInstanceOf[InputOperator] =>
+			val input = op.asInstanceOf[InputOperator]
+			if(input hasData) {
+				input sendData this
+				self ! BOF
+			} else processEof
+		case BOF => processEof
 		case EOF => {
 		  processEof
 		  log.slf4j.debug("received EOF")
 		}
 		case (inputNum: Int, data: Seq[_]) => processData(inputNum, data)
 	}
-	
+
 	private def processData(inputNum: Int, data: Seq[_]) = if(!finished) {
 		log.slf4j.debug("%s(%d) received message on input %d" format(op, hashCode, inputNum))
 		op.processWithRuntime(inputNum, data, this)
 		if(flushAfterProcess)
-			flush		
+			flush
 	}
-	
+
 	private def processEof = if(!finished) {
 		eofReceived = eofReceived + 1
 		if(eofReceived >= nInputs) {finish}
 	}
-	
+
 	protected def flush: Unit
 	protected def finish = {
-		op finish this		
+		op finish this
 		flush
 		emitEOF
 		log.slf4j.debug("emitted eof")
 		finished = true
 	}
-	
+
 	def forceFinish = finish
 	def isFinished: Boolean = finished
 	
-	self.lifeCycle = akka.config.Supervision.Temporary
+	//self.lifeCycle = akka.config.Supervision.Temporary
 }

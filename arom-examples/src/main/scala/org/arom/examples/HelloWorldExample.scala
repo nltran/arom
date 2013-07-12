@@ -1,9 +1,9 @@
-// (c) AROM processing 
+// (c) AROM processing
 
 /*
- * This is a simple AROM hello world example. We first define an 
- * InputOperator which job is to emit words contained in an array to 
- * the PrintLN operator bundled with the arom-core package. 
+ * This is a simple AROM hello world example. We first define an
+ * InputOperator which job is to emit words contained in an array to
+ * the PrintLN operator bundled with the arom-core package.
  */
 
 package org.arom.examples
@@ -16,14 +16,14 @@ class WordGenerator extends InputOperator {
     val words = Array("Hello", "World", "!")
 
     /*
-   * This input operator is unique and should not be copied , i.e. used in conjunction with the ^ connector
-   */
+     * This input operator is unique and should not be copied , i.e. used in conjunction with the ^ connector
+     */
     override def copy = throw new Error("This shouldn't happen since this operator is unique")
-    
+
     /*
-   * As this is an InputOperator, it is not supposed to receive data. 
-   * The core process of the operator is in the sendData method
-   */
+     * As this is an InputOperator, it is not supposed to receive data.
+     * The core process of the operator is in the sendData method
+     */
     private var _hasData = true
     def hasData = _hasData
 
@@ -34,7 +34,7 @@ class WordGenerator extends InputOperator {
   }
 
 object HelloWorldJob {
-   
+
   def main(args: Array[String]) = {
     /*
      * Create a new job DAG using the connector notation
@@ -48,7 +48,7 @@ object HelloWorldJob {
      */
     val job = new LocalJob(helloWorldPlan)
     job.start
-    
+
   }
 
 }
